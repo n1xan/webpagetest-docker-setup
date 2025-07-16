@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  wptserver:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: local-wptserver
+    container_name: wptserver
+    ports:
+      - "${SERVER_PORT:-4000}:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  wptagent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    image: local-wptagent
+    container_name: wptagent
+    network_mode: "${AGENT_NETWORK_MODE:-host}"
+    depends_on:
+      wptserver:
+        condition: service_healthy
+    environment:
+      - SERVER_URL=${SERVER_URL:-http://localhost:4000/work/}
+      - LOCATION=${LOCATION:-Test}
+      - NAME=${NAME:-}
+    restart: unless-stopped
+    volumes:
+      - /tmp:/tmp
